@@ -2,13 +2,8 @@ name: Publish Telegram Post
 
 on:
   schedule:
-    # 09:00 по Москве (UTC+3), через день: 8,10,12,14,16,18,20 июля 2026 —
-    # даты под текущий контент-план на 2 недели. cron не умеет "каждые 2 дня"
-    # сам по себе (*/2 в day-of-month считает от 1 числа и даёт нечётные дни),
-    # поэтому даты перечислены явно. Когда контент-план продлится дальше —
-    # обновите эту строку под новые даты.
-    - cron: '0 6 8,10,12,14,16,18,20 7 *'
-  workflow_dispatch: {}        # запуск вручную: Actions -> Publish Telegram Post -> Run workflow
+    - cron: '0 6 * * *'   # проверка каждый день в 09:00 по Москве (UTC+3); публикует, только если прошло 2 дня с прошлого поста
+  workflow_dispatch: {}    # запуск вручную кнопкой в GitHub
 
 permissions:
   contents: write
@@ -23,16 +18,15 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Publish next post
+      - name: Publish next post if due
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHANNEL: ${{ vars.TELEGRAM_CHANNEL }}
         run: python3 publish_next.py
 
-      - name: Save queue changes
+      - name: Save queue and state changes
         run: |
           git config user.name "telegram-autopost-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add queue published
+          git add queue published state.json
           git diff --staged --quiet || git commit -m "Publish next post"
           git push
